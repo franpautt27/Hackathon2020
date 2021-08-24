@@ -1,0 +1,294 @@
+---
+title: "N-Analytics"
+output: 
+  flexdashboard::flex_dashboard:
+    
+    orientation: rows
+    vertical_layout: fill
+    
+    theme: readable
+---
+<style>                     
+<!-- .navbar { -->
+<!--   background-color:#FFB76E; -->
+<!--   border-color:#FFB76E; -->
+<!-- } -->
+<!-- .navbar-brand { -->
+<!-- color:black!important; -->
+<!-- } -->
+.section.sidebar {
+  
+  background-color: rgba(255, 255, 255, 1);
+}
+.bgwhite1 {
+  background-color: white;
+  
+}
+
+ 
+.bgwhite2 {
+  background-color: white;
+  
+}
+</style>
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(knitr)
+library(DT)
+library(rpivotTable)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(openintro)
+library(ggvis)
+library(lubridate)
+library(rgdal)
+library(tidyverse)
+library(gganimate)
+library(scales)
+
+
+```
+
+```{r}
+setwd("C:/Users/Usuario/Desktop/HACKATON")
+datos<-read.csv("C:/Users/Usuario/Desktop/analisis/datos.csv",sep=";")
+dat<-read.csv("C:/Users/Usuario/Desktop/HACKATON/dat.csv",sep=",")
+datos2<-read.csv("C:/Users/Usuario/Desktop/HACKATON/datos2.csv",sep=",")
+datos3<-read.csv("C:/Users/Usuario/Desktop/HACKATON/datostres1.csv",sep=",")
+datos3$Ocupación<-datos3$OCUPACION.U.OFICIO
+datos_desempleo<-read.csv("C:/Users/Usuario/Desktop/analisis/mapa_desempleo_dpto.csv",sep=";")
+
+
+```
+
+
+```{r}
+mycolors<-c("blue","#FFC125","darkgreen","darkorange")
+```
+
+
+Inicio
+===========================================
+
+Row {.bgwhite1}
+--------------------------
+<div>
+
+<img src="inicio.png" width="100%" height="100%">
+
+</div>
+
+
+Página 2
+===============================================================================
+Column {.sidebar data-width=600}
+-------------------------------------
+<div>
+
+<img src="pag2.png" width="100%" height="100%">
+
+</div>
+
+
+   
+Row {data-height=500 .bgwhite1}
+-------------------------------------
+### **Gráfico 1:** ¿Qué tanto desempleo de migrantes hay en cada departamento?
+```{r}
+datosf<-filter(datos3,Ocupación=="Desempleado")
+p8 <- datosf %>%
+  group_by(DEPARTAMENTO) %>%
+  summarise(count = n()) %>%
+  plot_ly(x = ~DEPARTAMENTO,
+          y = ~count,
+          marker = list(color = "#F0750F"),
+          type = 'bar') %>%
+  layout(xaxis=list(title=""),
+         yaxis = list(title = ''))
+p8
+
+``` 
+    
+
+Row {data-height=500 .bgwhite1} 
+-------------------------------------         
+### **Gráfico 2:** ¿Desde qué fecha comenzó a aumentar la proporción de desempleo en los migrantes?
+```{r}
+datos3$FECHA.DE.INGRESO.AL.PAIS<-dmy(datos3$FECHA.DE.INGRESO.AL.PAIS)
+datos3$FECHA.DE.REGISTRO<-dmy(datos3$FECHA.DE.REGISTRO)
+datos3$Fecha<-datos3$FECHA.DE.INGRESO.AL.PAIS
+
+
+ 
+datoxx<-table(datos3$Fecha,datos3$Ocupación)
+datos4<-as.data.frame(datoxx)
+datos4<-rename(datos4, Fecha = Var1, Ocupación = Var2, Frecuencia = Freq)
+gplot <- ggplot(datos4,aes(x=as.Date(Fecha),y=Frecuencia,color=Ocupación,group=1,text = paste('Fecha: ', as.Date(Fecha)))) + 
+  geom_line()+scale_x_date(labels = date_format("%b/%y"))+
+  scale_color_manual(values=c("#FFB76E", "black","#F48020","#C66606","#F09537"))+
+  xlab("Fecha")
+  
+
+ggplotly(gplot,tooltip=c("Frecuencia","Ocupación","text"))
+```
+
+Página 3
+=======================================================
+
+Row {.bgwhite1} 
+-------------------------------------------------
+<div>
+
+<img src="pag3.png" width="100%" height="100%">
+
+</div>
+
+
+Row {.bgwhite2} 
+----------------------------------------------------------
+
+### **Gráfico 3:** ¿En qué rango de edad se presenta mayor empleabilidad en los migrantes?
+```{r}
+datos3$Edad<-datos3$EDAD
+ocupacion1 <- datos3%>%
+  count(Ocupación,Edad)%>%
+  filter(Edad %in% 18:60)
+pgg <- ggplot(
+  ocupacion1,
+  aes(Edad, n, color=Ocupación)) +   geom_line() +   scale_alpha() +
+  labs(x = "Edades", y = "Cantidad de personas") +
+   scale_color_manual(values=c("#FFB76E", "black","#F48020","#C66606","#F09537"))+theme(legend.position = "top")
+ggplotly(pgg)
+# an<-pgg+geom_point(aes(group = seq_along(EDAD)))+transition_reveal(EDAD)
+# animate(an)
+
+# ocupacion1 <- datos3%>%
+#   count(Ocupación,EDAD)%>%
+#   filter(EDAD %in% 18:60)
+# pgg <- ggplot(
+#   ocupacion1,
+#   aes(EDAD, n, color=Ocupación)) +   geom_line() +   scale_alpha() +
+#   labs(x = "Edades", y = "Cantidad de personas") + ggtitle("Ocupación de Venezolanos según edad")+theme(plot.title = element_text(hjust = 0.5,size = 16,face = "bold.italic"))+
+#   theme(legend.position = "top")
+# an<- pgg+   
+#   geom_point(aes(group = seq_along(EDAD))) +
+#   transition_reveal(EDAD)
+# animate(an)
+
+
+```
+
+### **Gráfico 4:** ¿Existe desigualdad de Género en la empleabilidad de los migrantes?
+```{r}
+datos3$Género<-datos3$GENERO
+gg=ggplot(data = datos3) +
+  geom_bar(mapping = aes(x = Ocupación, fill = Género), position ="fill")+theme(axis.title.y = element_blank())+
+  scale_fill_manual(values=c("#F0750F", "black"))
+ggplotly(gg)
+
+```
+
+
+
+
+
+
+Página 4
+=============================================================
+Row{.bgwhite1} 
+-------------------------------------------------------------
+
+### **Gráfico 5:** ¿La formación académica influye en la ocupación de los migrantes?
+```{r}
+NIVEL_ACADEMICO<-fct_collapse(datos3$NIVEL.DE.ESCOLARIDAD,
+                            "Basico"=c("Preescolar","Primaria", "Secundaria"),
+                            "Profesional" =c("Universitario","Doctorado - PSD","Especializacion","Maestria"),
+                            "Tecnica"=c("Tecnica/tecnologica"),
+                            "Ninguna"=c("Ninguno","No Aplica"))
+positions<-c("Ninguna","Tecnica", "Profesional", "Basico")
+
+datos21<-data.frame(datos3,NIVEL_ACADEMICO)
+datos21$`Nivel académico`<-datos21$NIVEL_ACADEMICO
+p2<- ggplot(datos21)+
+  geom_bar(mapping = aes(`Nivel académico`,fill=Ocupación))+ coord_flip()+scale_fill_manual(values=c("#FFB76E", "black","#F48020","#C66606","#F09537"))+
+   scale_x_discrete(limits = positions)
+ggplotly(p2)
+
+```
+
+### **Gráfico 7:** ¿Cuál es el mayor sector de ocupación de los migrantes?
+```{r}
+mycolors1<-c("#FFCB96","#EFA04F","#FF8927","#F0750F","#DF7308","#C66606","#A03F04")
+
+datos_ocupacion<-filter(datos3,SECTOR.DE.OCUPACION!="No Aplica")
+p4<-datos_ocupacion%>%
+  group_by(SECTOR.DE.OCUPACION)%>%
+  summarise(count=n())%>%
+  filter(count>1000)%>%
+  plot_ly(labels=~SECTOR.DE.OCUPACION,
+          values=~count,
+          marker=list(colors=mycolors1),
+          textinfo='none')%>%
+  add_pie(hole=0.2)%>%
+   layout(showlegend =T,
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p4
+
+
+```
+
+
+Row {.bgwhite1 data-width=300} 
+--------------------------------------------------------------------------
+### **Gráfico 6:** ¿La experiencia certificada otorga mejores oportunidades laborales?
+```{r}
+positions1<-c("Empleado formal","Hogar", "Desempleado", "Empleado informal","Independiente")
+
+datos5<-filter(datos3,EXPERIENCIA.CERTIFICADA.=="SI"|EXPERIENCIA.CERTIFICADA.=="NO")
+datos5$`¿Experiencia certificada?`<-datos5$EXPERIENCIA.CERTIFICADA.
+
+g2<-ggplot(data = datos5) + 
+  geom_bar(mapping = aes(x = `¿Experiencia certificada?`, fill = Ocupación), position = "dodge")+
+    scale_fill_manual(values=c("#FFB76E", "black","#F48020","#C66606","#F09537"))
+
+ggplotly(g2)
+
+
+
+```
+
+
+
+###
+<div>
+
+<img src="pag4.png" width="100%" height="100%">
+
+</div>
+
+
+Fuente de datos
+==============================================================
+<div align="center">
+<h1>Base de datos: BD-RAMV- ANONYMIZERED </h1>
+<h4>Por: Registro Administrativo de Migrantes Venezolanos - RAMV</h4>
+</div>
+
+<div style="font-style: italic" align="center">
+
+<p>
+
+
+Para mayor información sobre el RAMV, hacer click <a href="http://portal.gestiondelriesgo.gov.co/Paginas/Slide_home/Registro-Administrativo-de-Migrantes-Venezolanos-RAMV.aspx" target="_top">aquí</a></p>
+
+  <p>
+  
+  Para ver la base de datos utilizada en la presentación, hacer click <a href="https://drive.google.com/file/d/1-MhRx-Z5bUHOCyL9GcKJfsishWRCm-B_/view?usp=sharing" target="_top">aquí</a></p>
+  
+  <p>
+  
+  Para ver el informe de resultados, planeación y la logística realizada por el RAMV para la toma de datos, hacer click <a href="https://www.refworld.org.es/pdfid/5b2957524.pdf" target="_top">aquí</a></p>
+</div>
